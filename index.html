@@ -9,9 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze -->
-    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left, and the time, current weather, a fullscreen toggle, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
+    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left (fetching European news), and the time, current weather, a fullscreen toggle, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
     <!-- Visualization & Content Choices: 
-        - News Ticker -> Goal: Inform -> Presentation: Horizontally scrolling text from a credible source (BBC News via rss2json.com) in the top-left -> Interaction: None (automatic cycling) -> Justification: Offers passive updates on general information in a non-intrusive way, fulfilling the request for real news. -> Library/Method: JS for fetching and cycling, CSS for animation.
+        - News Ticker -> Goal: Inform -> Presentation: Horizontally scrolling text from credible European sources (The Local Sweden, Euronews via rss2json.com) in the top-left -> Interaction: None (automatic cycling) -> Justification: Offers passive updates on general European news in a non-intrusive way, fulfilling the request for real news and ensuring better fetching reliability. -> Library/Method: JS for fetching and cycling, CSS for animation.
         - Time/Date & Header Weather & Settings Icon & Fullscreen Toggle -> Goal: Inform/Configure/Utility -> Presentation: Large digital clock, concise current weather (icon, temp, description), a fullscreen toggle button, and a cogwheel icon, all arranged horizontally in the header's top-right with increased spacing -> Interaction: Settings icon toggles collapsible settings section; Fullscreen button toggles browser fullscreen mode -> Justification: Provides essential, at-a-glance information and discreet access to settings and display utility, suitable for a hands-off, dedicated display, and now with a more aesthetically pleasing, compact layout. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo), HTML for icon and button, Fullscreen API.
         - Calendar -> Goal: Organize -> Presentation: Embedded Google Calendar (Month mode) via iframe -> Interaction: Built-in Google Calendar navigation (if user interacts), now with auto-refresh every 5 minutes to ensure content is fresh. -> Justification: Directly displays the user's specific Google Calendar in a traditional month grid, fulfilling the core request for personal event visibility without requiring manual data entry. Month mode is chosen for a comprehensive view of events across the month. -> Library/Method: HTML iframe, JS setInterval.
         - Settings Section -> Goal: Configure -> Presentation: Collapsible section with input fields and theme selector -> Interaction: Save button updates settings, theme selector changes visual styles. -> Justification: Allows user to configure weather location and visual theme while keeping the settings out of the primary glanceable view.
@@ -228,7 +228,10 @@
             };
 
             const googleCalendarIframe = document.getElementById('google-calendar-iframe');
+            // Changed calendar mode back to MONTH
+            googleCalendarIframe.src = "https://calendar.google.com/calendar/embed?src=aTBkbGlscWNyczlkdXQ3a3ZvMWYzMzBvdmdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&ctz=Europe/Stockholm&mode=MONTH";
             const initialCalendarSrc = googleCalendarIframe.src;
+
             const newsTickerTextHeader = document.getElementById('news-ticker-text-header');
             const fullscreenToggleButton = document.getElementById('fullscreen-toggle-btn');
 
@@ -284,7 +287,7 @@
                     80: '🌦️', 81: '🌧️', 82: '🌧️',
                     95: '⛈️'
                 };
-                return icons[code] || '�';
+                return icons[code] || '🤷';
             }
             
             function getWeatherDescription(code) {
@@ -320,23 +323,50 @@
 
             // News Ticker Logic for Header
             async function fetchNewsHeadlines() {
-                const rssUrl = 'http://feeds.bbci.co.uk/news/rss.xml'; // BBC News RSS
-                const rssToJsonApi = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                // Using a more reliable BBC World News RSS and Euronews
+                const bbcWorldRssUrl = 'http://feeds.bbci.co.uk/news/world/rss.xml'; 
+                const euronewsRssUrl = 'https://www.euronews.com/rss?format=xml';
+
+                const fetchRssFeed = async (url) => {
+                    const rssToJsonApi = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}`;
+                    try {
+                        const response = await fetch(rssToJsonApi);
+                        if (!response.ok) {
+                            // Log the response status for more details on fetch failure
+                            console.error(`Fetch error from rss2json for ${url}: Status ${response.status} - ${response.statusText}`);
+                            throw new Error(`Failed to fetch RSS from ${url}`);
+                        }
+                        const data = await response.json();
+                        // Check for status 'ok' from rss2json.com and ensure items exist
+                        if (data.status === 'ok' && data.items && data.items.length > 0) {
+                            return data.items.map(item => item.title);
+                        }
+                        // If rss2json.com returns status not 'ok' or no items
+                        console.warn(`rss2json.com did not return 'ok' status or no items for ${url}:`, data);
+                        return []; 
+                    } catch (error) {
+                        console.error(`Error fetching RSS from ${url}:`, error);
+                        return []; 
+                    }
+                };
 
                 try {
-                    const response = await fetch(rssToJsonApi);
-                    if (!response.ok) throw new Error('Failed to fetch news headlines');
-                    const data = await response.json();
-                    if (data.items && data.items.length > 0) {
-                        appState.newsHeadlines = data.items.map(item => item.title);
+                    // Fetch from both sources
+                    const bbcHeadlines = await fetchRssFeed(bbcWorldRssUrl);
+                    const euronewsHeadlines = await fetchRssFeed(euronewsRssUrl);
+                    
+                    // Combine and filter out any empty or invalid titles
+                    appState.newsHeadlines = [...bbcHeadlines, ...euronewsHeadlines].filter(Boolean);
+                    
+                    if (appState.newsHeadlines.length > 0) {
                         console.log("Fetched news headlines:", appState.newsHeadlines);
                         updateNewsTickerHeader();
                     } else {
-                        appState.newsHeadlines = ["Could not load news headlines. Using default."];
+                        appState.newsHeadlines = ["Could not load news headlines from sources. Please check your internet connection or try again later."];
                         updateNewsTickerHeader();
                     }
                 } catch (error) {
-                    console.error("Error fetching news headlines:", error);
+                    console.error("Error fetching news headlines in combined fetch:", error);
                     appState.newsHeadlines = ["Error loading news. Check console or try again later."];
                     updateNewsTickerHeader();
                 }
@@ -437,7 +467,7 @@
                 
                 loadSettings();
                 fetchWeather();
-                fetchNewsHeadlines();
+                fetchNewsHeadlines(); // Initial fetch for news headlines
             }
 
             init();
@@ -445,4 +475,3 @@
     </script>
 </body>
 </html>
-�
