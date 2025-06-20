@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze -->
+    <!-- Application Structure Plan: The application is a single-page, scrollable display. The top features the clock, main title, and current weather for quick glanceability. A cogwheel icon provides access to settings in the top right. Below that, the primary calendar takes a prominent position using an embedded Google Calendar iframe, now set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
+    <!-- Visualization & Content Choices: 
+        - Time/Date & Header Weather -> Goal: Inform -> Presentation: Large digital clock and concise current weather (icon, temp, description) -> Interaction: None -> Justification: Provides essential, at-a-glance information for a kitchen setting, constantly visible. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo).
+        - Calendar -> Goal: Organize -> Presentation: Embedded Google Calendar (Month mode) via iframe -> Interaction: Built-in Google Calendar navigation (if user interacts), now with auto-refresh every 5 minutes to ensure content is fresh. -> Justification: Directly displays the user's specific Google Calendar in a traditional month grid, fulfilling the core request for personal event visibility without requiring manual data entry. Month mode is chosen for a comprehensive view of events across the month. -> Library/Method: HTML iframe, JS setInterval.
+        - Settings Toggle -> Goal: Configure -> Presentation: Cogwheel icon in top right -> Interaction: Click to toggle collapsible settings section. -> Justification: Provides discreet access to settings without cluttering the main display, suitable for a hands-off view.
+        - Settings Section -> Goal: Configure -> Presentation: Collapsible section with input fields and theme selector -> Interaction: Save button updates settings, theme selector changes visual styles. -> Justification: Allows user to configure weather location and visual theme while keeping the settings out of the primary glanceable view.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        :root {
+            /* Default Light Theme */
+            --bg-color: #fcfcfc;
+            --text-color: #374151; /* stone-800 */
+            --card-bg: #ffffff;
+            --card-border: #e5e7eb; /* stone-200 */
+            --accent-color: #f59e0b; /* amber-500 */
+            --accent-text-color: #ffffff;
+            --subtle-bg: #f9fafb; /* stone-100 */
+        }
+        body[data-theme="dark"] {
+            --bg-color: #1a202c; /* dark gray/navy */
+            --text-color: #e2e8f0; /* light gray */
+            --card-bg: #2d3748;
+            --card-border: #4a5568;
+            --accent-color: #f59e0b; /* amber-500, still prominent */
+            --accent-text-color: #ffffff;
+            --subtle-bg: #4a5568;
+        }
+        body[data-theme="ocean-breeze"] {
+            --bg-color: #e0f2f7; /* light blue */
+            --text-color: #2c5282; /* dark blue */
+            --card-bg: #ffffff;
+            --card-border: #a7d9ee;
+            --accent-color: #3182ce; /* a nice blue */
+            --accent-text-color: #ffffff;
+            --subtle-bg: #cce9f5;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .themed-card {
+            background-color: var(--card-bg);
+            border-color: var(--card-border);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        .themed-accent-text {
+            color: var(--accent-color);
+            transition: color 0.3s ease;
+        }
+        .themed-accent-bg {
+            background-color: var(--accent-color);
+            color: var(--accent-text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .themed-subtle-bg {
+            background-color: var(--subtle-bg);
+            transition: background-color 0.3s ease;
+        }
+        .themed-border {
+             border-color: var(--card-border);
+             transition: border-color 0.3s ease;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3; /* light grey */
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden-item { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 min-h-full flex flex-col">
+        
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 relative">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-stone-900 themed-text-color">Kitchen Hub</h1>
+                <p class="text-stone-600 themed-text-color mt-1">Your family's central dashboard.</p>
+            </div>
+            <div class="flex flex-col items-end gap-2">
+                <div id="header-weather" class="flex items-center gap-2">
+                    <p class="themed-text-color">Loading weather...</p>
+                </div>
+                <div id="clock" class="text-right">
+                    <p id="time-display" class="text-2xl md:text-3xl font-semibold themed-accent-text"></p>
+                    <p id="date-display" class="text-sm themed-text-color"></p>
+                </div>
+            </div>
+            <!-- Settings Cogwheel Icon -->
+            <button id="settings-toggle-icon" class="absolute top-0 right-0 p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity">
+                ⚙️
+            </button>
+        </header>
+
+        <main id="main-content" class="space-y-6 flex-grow">
+            <!-- Google Calendar Section -->
+            <section class="themed-card rounded-xl shadow-sm border themed-border p-4">
+                <h2 class="text-2xl font-bold mb-4 themed-text-color">Family Calendar</h2>
+                <p class="themed-text-color mb-4">View your integrated Google Calendar events below. This displays a month view of your linked calendar, showing events for the current month.</p>
+                <div class="relative overflow-hidden rounded-lg w-full" style="padding-top: 75%;">
+                    <iframe id="google-calendar-iframe"
+                        src="https://calendar.google.com/calendar/embed?src=aTBkbGlscWNyczlkdXQ3a3ZvMWYzMzBvdmdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&ctz=Europe/Stockholm&mode=MONTH"
+                        style="border: 0"
+                        width="100%"
+                        height="100%"
+                        frameborder="0"
+                        scrolling="no"
+                        class="absolute top-0 left-0">
+                    </iframe>
+                </div>
+            </section>
+
+            <!-- Settings View (Collapsible at bottom) -->
+            <section id="view-settings" class="themed-card rounded-xl shadow-sm border themed-border p-6 hidden-item">
+                <h2 class="text-2xl font-bold mb-4 flex items-center justify-between cursor-pointer themed-text-color">
+                    Settings
+                </h2>
+                <div id="settings-content" class="space-y-4">
+                    <p class="themed-text-color mb-4">Configure your location for accurate weather information and choose a theme. Remember to save changes.</p>
+                    <div>
+                        <label for="latitude" class="block font-medium themed-text-color">Latitude</label>
+                        <input type="text" id="latitude" class="w-full md:w-1/2 p-2 mt-1 border themed-border rounded-lg" placeholder="e.g., 52.52">
+                    </div>
+                    <div>
+                        <label for="longitude" class="block font-medium themed-text-color">Longitude</label>
+                        <input type="text" id="longitude" class="w-full md:w-1/2 p-2 mt-1 border themed-border rounded-lg" placeholder="e.g., 13.41">
+                    </div>
+                     <div>
+                        <label for="location-name" class="block font-medium themed-text-color">Location Name</label>
+                        <input type="text" id="location-name" class="w-full md:w-1/2 p-2 mt-1 border themed-border rounded-lg" placeholder="e.g., Berlin, Germany">
+                    </div>
+                    
+                    <div class="pt-4">
+                        <label for="theme-select" class="block font-medium themed-text-color">Theme</label>
+                        <select id="theme-select" class="w-full md:w-1/2 p-2 mt-1 border themed-border rounded-lg bg-white themed-text-color">
+                            <option value="light">Light (Default)</option>
+                            <option value="dark">Dark</option>
+                            <option value="ocean-breeze">Ocean Breeze</option>
+                        </select>
+                    </div>
+
+                    <p class="text-sm themed-text-color">Find your coordinates using an online tool like <a href="https://www.latlong.net/" target="_blank" class="themed-accent-text underline">latlong.net</a>.</p>
+                    <button id="save-settings-btn" class="px-4 py-2 themed-accent-bg rounded-lg hover:opacity-90 transition-opacity font-semibold">Save Settings</button>
+                    <p id="settings-saved-msg" class="text-green-600 mt-2 hidden-item">Settings saved successfully!</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const appState = {
+                weatherData: null,
+                settings: {
+                    latitude: '55.7865',
+                    longitude: '13.0211',
+                    locationName: 'Furulund, Sweden',
+                    theme: 'light'
+                },
+            };
+
+            const googleCalendarIframe = document.getElementById('google-calendar-iframe');
+            const initialCalendarSrc = googleCalendarIframe.src;
+
+            function updateClock() {
+                const now = new Date();
+                document.getElementById('time-display').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('date-display').textContent = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            }
+
+            function refreshCalendar() {
+                // Reload the iframe by re-setting its src attribute
+                googleCalendarIframe.src = initialCalendarSrc;
+                console.log('Google Calendar refreshed.');
+            }
+
+            // Set up calendar refresh every 5 minutes
+            setInterval(refreshCalendar, 5 * 60 * 1000); // 5 minutes * 60 seconds * 1000 milliseconds
+
+            function renderHeaderWeather() {
+                const headerWeatherContainer = document.getElementById('header-weather');
+                if (appState.weatherData && appState.weatherData.current) {
+                    const current = appState.weatherData.current;
+                     headerWeatherContainer.innerHTML = `
+                        <span class="text-2xl">${getWeatherIcon(current.weather_code)}</span>
+                        <span class="text-xl font-semibold themed-accent-text">${Math.round(current.temperature_2m)}°C</span>
+                        <span class="text-sm themed-text-color">${getWeatherDescription(current.weather_code)}</span>
+                    `;
+                } else {
+                     headerWeatherContainer.innerHTML = `<p class="themed-text-color text-xs">Weather unavailable</p>`;
+                }
+            }
+
+            function getWeatherIcon(code) {
+                const icons = {
+                    0: '☀️', 1: '🌤️', 2: '⛅️', 3: '☁️',
+                    45: '🌫️', 48: '🌫️',
+                    51: '🌦️', 53: '🌦️', 55: '🌦️',
+                    61: '🌧️', 63: '🌧️', 65: '🌧️',
+                    71: '🌨️', 73: '🌨️', 75: '🌨️',
+                    80: '🌦️', 81: '🌧️', 82: '🌧️',
+                    95: '⛈️'
+                };
+                return icons[code] || '🤷';
+            }
+            
+            function getWeatherDescription(code) {
+                const descriptions = {
+                    0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+                    45: 'Fog', 48: 'Rime fog',
+                    51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle',
+                    61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
+                    71: 'Slight snow fall', 73: 'Moderate snow fall', 75: 'Heavy snow fall',
+                    80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers',
+                    95: 'Thunderstorm'
+                };
+                return descriptions[code] || 'Unknown';
+            }
+            
+            async function fetchWeather() {
+                const { latitude, longitude } = appState.settings;
+                if (!latitude || !longitude) return;
+
+                const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Weather data not available');
+                    appState.weatherData = await response.json();
+                    renderHeaderWeather();
+                } catch (error) {
+                    console.error('Failed to fetch weather:', error);
+                    appState.weatherData = null;
+                    renderHeaderWeather();
+                }
+            }
+
+            // Settings Logic
+            const settingsToggleIcon = document.getElementById('settings-toggle-icon'); // Changed ID for icon
+            const settingsSection = document.getElementById('view-settings'); // Entire settings section
+            const settingsContent = document.getElementById('settings-content'); // Content within settings section
+
+            settingsToggleIcon.addEventListener('click', () => {
+                settingsSection.classList.toggle('hidden-item');
+            });
+
+            function loadSettings() {
+                 const savedSettings = localStorage.getItem('kitchenHubSettings');
+                 if (savedSettings) {
+                    appState.settings = JSON.parse(savedSettings);
+                 }
+                 document.getElementById('latitude').value = appState.settings.latitude;
+                 document.getElementById('longitude').value = appState.settings.longitude;
+                 document.getElementById('location-name').value = appState.settings.locationName;
+                 document.getElementById('theme-select').value = appState.settings.theme;
+                 applyTheme(appState.settings.theme);
+            }
+
+            function saveSettings() {
+                appState.settings.latitude = document.getElementById('latitude').value;
+                appState.settings.longitude = document.getElementById('longitude').value;
+                appState.settings.locationName = document.getElementById('location-name').value;
+                appState.settings.theme = document.getElementById('theme-select').value;
+                localStorage.setItem('kitchenHubSettings', JSON.stringify(appState.settings));
+                
+                applyTheme(appState.settings.theme);
+                
+                const msgEl = document.getElementById('settings-saved-msg');
+                msgEl.classList.remove('hidden-item');
+                setTimeout(() => msgEl.classList.add('hidden-item'), 3000);
+
+                fetchWeather();
+            }
+
+            document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+
+            function applyTheme(theme) {
+                document.body.setAttribute('data-theme', theme);
+                renderHeaderWeather();
+            }
+
+            function init() {
+                updateClock();
+                setInterval(updateClock, 1000 * 30); 
+                
+                loadSettings();
+                fetchWeather();
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>
