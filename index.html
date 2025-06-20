@@ -9,11 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze -->
-    <!-- Application Structure Plan: The application is a single-page, scrollable display. The top features the clock, main title, and current weather for quick glanceability. A cogwheel icon provides access to settings in the top right. Below that, the primary calendar takes a prominent position using an embedded Google Calendar iframe, now set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
+    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now solely contains the time, current weather, and a settings cogwheel icon, all neatly aligned to the right and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
     <!-- Visualization & Content Choices: 
-        - Time/Date & Header Weather -> Goal: Inform -> Presentation: Large digital clock and concise current weather (icon, temp, description) -> Interaction: None -> Justification: Provides essential, at-a-glance information for a kitchen setting, constantly visible. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo).
+        - Time/Date & Header Weather & Settings Icon -> Goal: Inform/Configure -> Presentation: Large digital clock, concise current weather (icon, temp, description), and a cogwheel icon, all arranged horizontally in the header's top-right with increased spacing -> Interaction: Settings icon toggles collapsible settings section -> Justification: Provides essential, at-a-glance information and discreet access to settings without a main title, suitable for a hands-off, dedicated display, and now with a more aesthetically pleasing, compact layout. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo), HTML for icon.
         - Calendar -> Goal: Organize -> Presentation: Embedded Google Calendar (Month mode) via iframe -> Interaction: Built-in Google Calendar navigation (if user interacts), now with auto-refresh every 5 minutes to ensure content is fresh. -> Justification: Directly displays the user's specific Google Calendar in a traditional month grid, fulfilling the core request for personal event visibility without requiring manual data entry. Month mode is chosen for a comprehensive view of events across the month. -> Library/Method: HTML iframe, JS setInterval.
-        - Settings Toggle -> Goal: Configure -> Presentation: Cogwheel icon in top right -> Interaction: Click to toggle collapsible settings section. -> Justification: Provides discreet access to settings without cluttering the main display, suitable for a hands-off view.
         - Settings Section -> Goal: Configure -> Presentation: Collapsible section with input fields and theme selector -> Interaction: Save button updates settings, theme selector changes visual styles. -> Justification: Allows user to configure weather location and visual theme while keeping the settings out of the primary glanceable view.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
@@ -101,24 +100,20 @@
 
     <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 min-h-full flex flex-col">
         
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 relative">
-            <div>
-                <h1 class="text-3xl md:text-4xl font-bold text-stone-900 themed-text-color">Kitchen Hub</h1>
-                <p class="text-stone-600 themed-text-color mt-1">Your family's central dashboard.</p>
-            </div>
-            <div class="flex flex-col items-end gap-2">
+        <header class="flex justify-end items-center py-2 relative"> <!-- Adjusted padding and flex alignment -->
+            <div class="flex items-center gap-x-6"> <!-- Increased gap-x for spreading -->
                 <div id="header-weather" class="flex items-center gap-2">
                     <p class="themed-text-color">Loading weather...</p>
                 </div>
-                <div id="clock" class="text-right">
+                <div id="clock" class="text-right flex flex-col">
                     <p id="time-display" class="text-2xl md:text-3xl font-semibold themed-accent-text"></p>
                     <p id="date-display" class="text-sm themed-text-color"></p>
                 </div>
+                <!-- Settings Cogwheel Icon - now part of the main flex container, positioned correctly -->
+                <button id="settings-toggle-icon" class="p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity">
+                    ⚙️
+                </button>
             </div>
-            <!-- Settings Cogwheel Icon -->
-            <button id="settings-toggle-icon" class="absolute top-0 right-0 p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity">
-                ⚙️
-            </button>
         </header>
 
         <main id="main-content" class="space-y-6 flex-grow">
@@ -265,9 +260,8 @@
             }
 
             // Settings Logic
-            const settingsToggleIcon = document.getElementById('settings-toggle-icon'); // Changed ID for icon
-            const settingsSection = document.getElementById('view-settings'); // Entire settings section
-            const settingsContent = document.getElementById('settings-content'); // Content within settings section
+            const settingsToggleIcon = document.getElementById('settings-toggle-icon');
+            const settingsSection = document.getElementById('view-settings');
 
             settingsToggleIcon.addEventListener('click', () => {
                 settingsSection.classList.toggle('hidden-item');
