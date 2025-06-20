@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze -->
-    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left (fetching European news), and the time, current weather, a fullscreen toggle, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
+    <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze, Forest Green, Lavender Mist, Charcoal Grey -->
+    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left (fetching European and World news), and the time, current weather, a fullscreen toggle, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
     <!-- Visualization & Content Choices: 
-        - News Ticker -> Goal: Inform -> Presentation: Horizontally scrolling text from credible European sources (The Local Sweden, Euronews via rss2json.com) in the top-left -> Interaction: None (automatic cycling) -> Justification: Offers passive updates on general European news in a non-intrusive way, fulfilling the request for real news and ensuring better fetching reliability. -> Library/Method: JS for fetching and cycling, CSS for animation.
+        - News Ticker -> Goal: Inform -> Presentation: Horizontally scrolling text from credible European/World sources (BBC World, Euronews via rss2json.com) in the top-left -> Interaction: None (automatic cycling) -> Justification: Offers passive updates on general news, with improved fetching reliability. -> Library/Method: JS for fetching and cycling, CSS for animation.
         - Time/Date & Header Weather & Settings Icon & Fullscreen Toggle -> Goal: Inform/Configure/Utility -> Presentation: Large digital clock, concise current weather (icon, temp, description), a fullscreen toggle button, and a cogwheel icon, all arranged horizontally in the header's top-right with increased spacing -> Interaction: Settings icon toggles collapsible settings section; Fullscreen button toggles browser fullscreen mode -> Justification: Provides essential, at-a-glance information and discreet access to settings and display utility, suitable for a hands-off, dedicated display, and now with a more aesthetically pleasing, compact layout. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo), HTML for icon and button, Fullscreen API.
         - Calendar -> Goal: Organize -> Presentation: Embedded Google Calendar (Month mode) via iframe -> Interaction: Built-in Google Calendar navigation (if user interacts), now with auto-refresh every 5 minutes to ensure content is fresh. -> Justification: Directly displays the user's specific Google Calendar in a traditional month grid, fulfilling the core request for personal event visibility without requiring manual data entry. Month mode is chosen for a comprehensive view of events across the month. -> Library/Method: HTML iframe, JS setInterval.
         - Settings Section -> Goal: Configure -> Presentation: Collapsible section with input fields and theme selector -> Interaction: Save button updates settings, theme selector changes visual styles. -> Justification: Allows user to configure weather location and visual theme while keeping the settings out of the primary glanceable view.
@@ -67,6 +67,55 @@
             --weather-bg-color-foggy: #b0bec5; /* greyish blue */
             --weather-bg-color-default: var(--bg-color);
         }
+        body[data-theme="forest-green"] {
+            --bg-color: #e6eed6; /* light sage green */
+            --text-color: #2b500a; /* dark forest green */
+            --card-bg: #f5f8ed;
+            --card-border: #b3c79c;
+            --accent-color: #6b8e23; /* olive green */
+            --accent-text-color: #ffffff;
+            --subtle-bg: #d7e0c4;
+            --weather-bg-color-sunny: #d4ed9a;
+            --weather-bg-color-cloudy: #c4d7b3;
+            --weather-bg-color-rainy: #a6b890;
+            --weather-bg-color-thunder: #8b9f77;
+            --weather-bg-color-snowy: #e9f0e1;
+            --weather-bg-color-foggy: #d9e0ce;
+            --weather-bg-color-default: var(--bg-color);
+        }
+        body[data-theme="lavender-mist"] {
+            --bg-color: #f0e6f6; /* very light lavender */
+            --text-color: #5d357a; /* deep violet */
+            --card-bg: #ffffff;
+            --card-border: #d4bade;
+            --accent-color: #8c52ff; /* vibrant lavender/purple */
+            --accent-text-color: #ffffff;
+            --subtle-bg: #e6d9ed;
+            --weather-bg-color-sunny: #d9bfe6;
+            --weather-bg-color-cloudy: #e0d0f0;
+            --weather-bg-color-rainy: #c8b0e0;
+            --weather-bg-color-thunder: #a985d0;
+            --weather-bg-color-snowy: #f2e9f7;
+            --weather-bg-color-foggy: #d9c5e0;
+            --weather-bg-color-default: var(--bg-color);
+        }
+        body[data-theme="charcoal-grey"] {
+            --bg-color: #36454F; /* charcoal */
+            --text-color: #E0E0E0; /* light gray */
+            --card-bg: #4F5D6C; /* slightly lighter charcoal */
+            --card-border: #6B7A8A; /* medium gray */
+            --accent-color: #FF7F50; /* coral */
+            --accent-text-color: #FFFFFF;
+            --subtle-bg: #42505B;
+            --weather-bg-color-sunny: #5B4E48;
+            --weather-bg-color-cloudy: #4A5763;
+            --weather-bg-color-rainy: #404B56;
+            --weather-bg-color-thunder: #38424B;
+            --weather-bg-color-snowy: #45525D;
+            --weather-bg-color-foggy: #55626F;
+            --weather-bg-color-default: var(--bg-color);
+        }
+
 
         html, body {
             height: 100%;
@@ -130,11 +179,11 @@
 </head>
 <body>
 
-    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 min-h-full flex flex-col">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-4 min-h-full flex flex-col">
         
-        <header class="flex justify-between items-center py-2 relative">
+        <header class="flex justify-between items-center py-1 relative">
             <!-- News Ticker Top Left -->
-            <div id="news-ticker-section-header" class="flex-grow max-w-[60%] overflow-hidden relative pr-4">
+            <div id="news-ticker-section-header" class="flex-grow max-w-[60%] overflow-hidden relative pr-2">
                 <div id="news-ticker-content-header" class="whitespace-nowrap overflow-hidden relative">
                     <span id="news-ticker-text-header" class="inline-block themed-text-color text-lg animate-scroll">Loading headlines...</span>
                 </div>
@@ -158,7 +207,7 @@
             </div>
         </header>
 
-        <main id="main-content" class="space-y-6 flex-grow">
+        <main id="main-content" class="space-y-4 flex-grow">
             <!-- Google Calendar Section -->
             <section class="themed-card rounded-xl shadow-sm border themed-border p-4">
                 <h2 class="text-2xl font-bold mb-4 themed-text-color">Family Calendar</h2>
@@ -181,7 +230,7 @@
                 <h2 class="text-2xl font-bold mb-4 flex items-center justify-between cursor-pointer themed-text-color">
                     Settings
                 </h2>
-                <div id="settings-content" class="space-y-4">
+                <div id="settings-content" class="space-y-3">
                     <p class="themed-text-color mb-4">Configure your location for accurate weather information and choose a theme. Remember to save changes.</p>
                     <div>
                         <label for="latitude" class="block font-medium themed-text-color">Latitude</label>
@@ -202,6 +251,9 @@
                             <option value="light">Light (Default)</option>
                             <option value="dark">Dark</option>
                             <option value="ocean-breeze">Ocean Breeze</option>
+                            <option value="forest-green">Forest Green</option>
+                            <option value="lavender-mist">Lavender Mist</option>
+                            <option value="charcoal-grey">Charcoal Grey</option>
                         </select>
                     </div>
 
@@ -323,7 +375,7 @@
 
             // News Ticker Logic for Header
             async function fetchNewsHeadlines() {
-                // Using a more reliable BBC World News RSS and Euronews
+                // Using BBC World News for general reliability and Euronews for European focus.
                 const bbcWorldRssUrl = 'http://feeds.bbci.co.uk/news/world/rss.xml'; 
                 const euronewsRssUrl = 'https://www.euronews.com/rss?format=xml';
 
@@ -332,16 +384,13 @@
                     try {
                         const response = await fetch(rssToJsonApi);
                         if (!response.ok) {
-                            // Log the response status for more details on fetch failure
                             console.error(`Fetch error from rss2json for ${url}: Status ${response.status} - ${response.statusText}`);
                             throw new Error(`Failed to fetch RSS from ${url}`);
                         }
                         const data = await response.json();
-                        // Check for status 'ok' from rss2json.com and ensure items exist
                         if (data.status === 'ok' && data.items && data.items.length > 0) {
                             return data.items.map(item => item.title);
                         }
-                        // If rss2json.com returns status not 'ok' or no items
                         console.warn(`rss2json.com did not return 'ok' status or no items for ${url}:`, data);
                         return []; 
                     } catch (error) {
@@ -351,11 +400,9 @@
                 };
 
                 try {
-                    // Fetch from both sources
                     const bbcHeadlines = await fetchRssFeed(bbcWorldRssUrl);
                     const euronewsHeadlines = await fetchRssFeed(euronewsRssUrl);
                     
-                    // Combine and filter out any empty or invalid titles
                     appState.newsHeadlines = [...bbcHeadlines, ...euronewsHeadlines].filter(Boolean);
                     
                     if (appState.newsHeadlines.length > 0) {
