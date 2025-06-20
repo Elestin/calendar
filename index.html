@@ -9,8 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze -->
-    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now solely contains the time, current weather, and a settings cogwheel icon, all neatly aligned to the right and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
+    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left, and the time, current weather, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
     <!-- Visualization & Content Choices: 
+        - News Ticker -> Goal: Inform -> Presentation: Horizontally scrolling text from a credible source (BBC News via rss2json.com) in the top-left -> Interaction: None (automatic cycling) -> Justification: Offers passive updates on general information in a non-intrusive way, fulfilling the request for real news. -> Library/Method: JS for fetching and cycling, CSS for animation.
         - Time/Date & Header Weather & Settings Icon -> Goal: Inform/Configure -> Presentation: Large digital clock, concise current weather (icon, temp, description), and a cogwheel icon, all arranged horizontally in the header's top-right with increased spacing -> Interaction: Settings icon toggles collapsible settings section -> Justification: Provides essential, at-a-glance information and discreet access to settings without a main title, suitable for a hands-off, dedicated display, and now with a more aesthetically pleasing, compact layout. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo), HTML for icon.
         - Calendar -> Goal: Organize -> Presentation: Embedded Google Calendar (Month mode) via iframe -> Interaction: Built-in Google Calendar navigation (if user interacts), now with auto-refresh every 5 minutes to ensure content is fresh. -> Justification: Directly displays the user's specific Google Calendar in a traditional month grid, fulfilling the core request for personal event visibility without requiring manual data entry. Month mode is chosen for a comprehensive view of events across the month. -> Library/Method: HTML iframe, JS setInterval.
         - Settings Section -> Goal: Configure -> Presentation: Collapsible section with input fields and theme selector -> Interaction: Save button updates settings, theme selector changes visual styles. -> Justification: Allows user to configure weather location and visual theme while keeping the settings out of the primary glanceable view.
@@ -26,6 +27,13 @@
             --accent-color: #f59e0b; /* amber-500 */
             --accent-text-color: #ffffff;
             --subtle-bg: #f9fafb; /* stone-100 */
+            --weather-bg-color-sunny: #ffedd5; /* light orange/peach */
+            --weather-bg-color-cloudy: #e0e7ff; /* light blue-grey */
+            --weather-bg-color-rainy: #dbeafe; /* lighter blue */
+            --weather-bg-color-thunder: #fecaca; /* light red */
+            --weather-bg-color-snowy: #e0f2f7; /* very light blue */
+            --weather-bg-color-foggy: #e5e7eb; /* light grey */
+            --weather-bg-color-default: var(--bg-color);
         }
         body[data-theme="dark"] {
             --bg-color: #1a202c; /* dark gray/navy */
@@ -35,6 +43,13 @@
             --accent-color: #f59e0b; /* amber-500, still prominent */
             --accent-text-color: #ffffff;
             --subtle-bg: #4a5568;
+            --weather-bg-color-sunny: #4a3e2a; /* dark muted orange */
+            --weather-bg-color-cloudy: #36425a; /* dark muted blue-grey */
+            --weather-bg-color-rainy: #2a3a4f; /* darker blue */
+            --weather-bg-color-thunder: #5e3030; /* dark muted red */
+            --weather-bg-color-snowy: #2b3940; /* dark muted light blue */
+            --weather-bg-color-foggy: #3f4757; /* darker grey */
+            --weather-bg-color-default: var(--bg-color);
         }
         body[data-theme="ocean-breeze"] {
             --bg-color: #e0f2f7; /* light blue */
@@ -44,6 +59,13 @@
             --accent-color: #3182ce; /* a nice blue */
             --accent-text-color: #ffffff;
             --subtle-bg: #cce9f5;
+            --weather-bg-color-sunny: #a7d9ee; /* brighter light blue */
+            --weather-bg-color-cloudy: #b3e5fc; /* light blue */
+            --weather-bg-color-rainy: #81d4fa; /* medium blue */
+            --weather-bg-color-thunder: #64b5f6; /* slightly darker blue */
+            --weather-bg-color-snowy: #bbdefb; /* even lighter blue */
+            --weather-bg-color-foggy: #b0bec5; /* greyish blue */
+            --weather-bg-color-default: var(--bg-color);
         }
 
         html, body {
@@ -94,14 +116,31 @@
             100% { transform: rotate(360deg); }
         }
         .hidden-item { display: none; }
+
+        /* News Ticker Animation */
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-scroll {
+            animation: scroll linear infinite; /* Duration will be set by JS */
+            animation-delay: 2s; /* Short delay before starting */
+        }
     </style>
 </head>
 <body>
 
     <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 min-h-full flex flex-col">
         
-        <header class="flex justify-end items-center py-2 relative"> <!-- Adjusted padding and flex alignment -->
-            <div class="flex items-center gap-x-6"> <!-- Increased gap-x for spreading -->
+        <header class="flex justify-between items-center py-2 relative">
+            <!-- News Ticker Top Left -->
+            <div id="news-ticker-section-header" class="flex-grow max-w-[60%] overflow-hidden relative pr-4">
+                <div id="news-ticker-content-header" class="whitespace-nowrap overflow-hidden relative">
+                    <span id="news-ticker-text-header" class="inline-block themed-text-color text-lg animate-scroll">Loading headlines...</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-x-6">
                 <div id="header-weather" class="flex items-center gap-2">
                     <p class="themed-text-color">Loading weather...</p>
                 </div>
@@ -109,7 +148,6 @@
                     <p id="time-display" class="text-2xl md:text-3xl font-semibold themed-accent-text"></p>
                     <p id="date-display" class="text-sm themed-text-color"></p>
                 </div>
-                <!-- Settings Cogwheel Icon - now part of the main flex container, positioned correctly -->
                 <button id="settings-toggle-icon" class="p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity">
                     ⚙️
                 </button>
@@ -164,7 +202,8 @@
                     </div>
 
                     <p class="text-sm themed-text-color">Find your coordinates using an online tool like <a href="https://www.latlong.net/" target="_blank" class="themed-accent-text underline">latlong.net</a>.</p>
-                    <button id="save-settings-btn" class="px-4 py-2 themed-accent-bg rounded-lg hover:opacity-90 transition-opacity font-semibold">Save Settings</button>
+                    
+                    <button id="save-settings-btn" class="px-4 py-2 themed-accent-bg rounded-lg hover:opacity-90 transition-opacity font-semibold mt-4">Save Settings</button>
                     <p id="settings-saved-msg" class="text-green-600 mt-2 hidden-item">Settings saved successfully!</p>
                 </div>
             </section>
@@ -179,12 +218,17 @@
                     latitude: '55.7865',
                     longitude: '13.0211',
                     locationName: 'Furulund, Sweden',
-                    theme: 'light'
+                    theme: 'light',
                 },
+                newsHeadlines: [],
             };
 
             const googleCalendarIframe = document.getElementById('google-calendar-iframe');
             const initialCalendarSrc = googleCalendarIframe.src;
+            const newsTickerTextHeader = document.getElementById('news-ticker-text-header');
+
+            let currentHeadlineIndex = 0;
+            let newsTickerInterval;
 
             function updateClock() {
                 const now = new Date();
@@ -193,25 +237,36 @@
             }
 
             function refreshCalendar() {
-                // Reload the iframe by re-setting its src attribute
                 googleCalendarIframe.src = initialCalendarSrc;
                 console.log('Google Calendar refreshed.');
             }
 
-            // Set up calendar refresh every 5 minutes
-            setInterval(refreshCalendar, 5 * 60 * 1000); // 5 minutes * 60 seconds * 1000 milliseconds
+            setInterval(refreshCalendar, 5 * 60 * 1000);
+
+            function getWeatherCondition(code) {
+                if ([0, 1].includes(code)) return 'sunny';
+                if ([2, 3].includes(code)) return 'cloudy';
+                if ([45, 48].includes(code)) return 'foggy';
+                if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return 'rainy';
+                if ([71, 73, 75].includes(code)) return 'snowy';
+                if ([95].includes(code)) return 'thunder';
+                return 'default';
+            }
 
             function renderHeaderWeather() {
                 const headerWeatherContainer = document.getElementById('header-weather');
                 if (appState.weatherData && appState.weatherData.current) {
                     const current = appState.weatherData.current;
-                     headerWeatherContainer.innerHTML = `
+                    headerWeatherContainer.innerHTML = `
                         <span class="text-2xl">${getWeatherIcon(current.weather_code)}</span>
                         <span class="text-xl font-semibold themed-accent-text">${Math.round(current.temperature_2m)}°C</span>
                         <span class="text-sm themed-text-color">${getWeatherDescription(current.weather_code)}</span>
                     `;
+                    const weatherCondition = getWeatherCondition(current.weather_code);
+                    document.body.style.backgroundColor = `var(--weather-bg-color-${weatherCondition})`;
                 } else {
-                     headerWeatherContainer.innerHTML = `<p class="themed-text-color text-xs">Weather unavailable</p>`;
+                    headerWeatherContainer.innerHTML = `<p class="themed-text-color text-xs">Weather unavailable</p>`;
+                    document.body.style.backgroundColor = `var(--bg-color)`;
                 }
             }
 
@@ -259,32 +314,97 @@
                 }
             }
 
+            // News Ticker Logic for Header
+            async function fetchNewsHeadlines() {
+                const rssUrl = 'http://feeds.bbci.co.uk/news/rss.xml'; // BBC News RSS
+                const rssToJsonApi = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+                try {
+                    const response = await fetch(rssToJsonApi);
+                    if (!response.ok) throw new Error('Failed to fetch news headlines');
+                    const data = await response.json();
+                    if (data.items && data.items.length > 0) {
+                        appState.newsHeadlines = data.items.map(item => item.title);
+                        console.log("Fetched news headlines:", appState.newsHeadlines);
+                        updateNewsTickerHeader();
+                    } else {
+                        appState.newsHeadlines = ["Could not load news headlines. Using default."];
+                        updateNewsTickerHeader();
+                    }
+                } catch (error) {
+                    console.error("Error fetching news headlines:", error);
+                    appState.newsHeadlines = ["Error loading news. Check console or try again later."];
+                    updateNewsTickerHeader();
+                }
+            }
+
+            function updateNewsTickerHeader() {
+                if (appState.newsHeadlines.length === 0) {
+                    newsTickerTextHeader.textContent = "Loading headlines...";
+                    return;
+                }
+
+                newsTickerTextHeader.textContent = appState.newsHeadlines[currentHeadlineIndex];
+                currentHeadlineIndex = (currentHeadlineIndex + 1) % appState.newsHeadlines.length;
+
+                // Stop previous animation if any
+                newsTickerTextHeader.style.animation = 'none';
+                void newsTickerTextHeader.offsetWidth; // Trigger reflow
+
+                // Calculate duration based on content width relative to its parent container
+                const parentWidth = newsTickerTextHeader.parentElement.offsetWidth;
+                const textWidth = newsTickerTextHeader.scrollWidth; // Use scrollWidth for true content width
+
+                // Only animate if text is wider than its container
+                if (textWidth > parentWidth) {
+                    const duration = Math.max(10, textWidth / 50); // Adjust speed based on content length
+                    newsTickerTextHeader.style.animation = `scroll ${duration}s linear infinite`;
+                } else {
+                    // If text fits, no need to scroll, center it or just display
+                    newsTickerTextHeader.style.animation = 'none'; // Ensure no animation
+                    newsTickerTextHeader.style.transform = 'translateX(0)'; // Reset position
+                }
+            }
+            
+            // Set up interval for news ticker updates
+            // This interval will primarily trigger the change of headline content,
+            // the animation itself is handled by CSS and resets upon content change.
+            setInterval(updateNewsTickerHeader, 10 * 1000); // Change headline every 10 seconds
+
             // Settings Logic
             const settingsToggleIcon = document.getElementById('settings-toggle-icon');
             const settingsSection = document.getElementById('view-settings');
 
             settingsToggleIcon.addEventListener('click', () => {
                 settingsSection.classList.toggle('hidden-item');
+                if (!settingsSection.classList.contains('hidden-item')) {
+                    document.getElementById('latitude').value = appState.settings.latitude;
+                    document.getElementById('longitude').value = appState.settings.longitude;
+                    document.getElementById('location-name').value = appState.settings.locationName;
+                    document.getElementById('theme-select').value = appState.settings.theme;
+                }
             });
 
             function loadSettings() {
                  const savedSettings = localStorage.getItem('kitchenHubSettings');
                  if (savedSettings) {
-                    appState.settings = JSON.parse(savedSettings);
+                    const parsedSettings = JSON.parse(savedSettings);
+                    appState.settings = { ...appState.settings, ...parsedSettings };
                  }
-                 document.getElementById('latitude').value = appState.settings.latitude;
-                 document.getElementById('longitude').value = appState.settings.longitude;
-                 document.getElementById('location-name').value = appState.settings.locationName;
-                 document.getElementById('theme-select').value = appState.settings.theme;
-                 applyTheme(appState.settings.theme);
             }
 
-            function saveSettings() {
+            function saveAllSettings() {
                 appState.settings.latitude = document.getElementById('latitude').value;
                 appState.settings.longitude = document.getElementById('longitude').value;
                 appState.settings.locationName = document.getElementById('location-name').value;
                 appState.settings.theme = document.getElementById('theme-select').value;
-                localStorage.setItem('kitchenHubSettings', JSON.stringify(appState.settings));
+                
+                localStorage.setItem('kitchenHubSettings', JSON.stringify({
+                    latitude: appState.settings.latitude,
+                    longitude: appState.settings.longitude,
+                    locationName: appState.settings.locationName,
+                    theme: appState.settings.theme,
+                }));
                 
                 applyTheme(appState.settings.theme);
                 
@@ -295,11 +415,12 @@
                 fetchWeather();
             }
 
-            document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+            document.getElementById('save-settings-btn').addEventListener('click', saveAllSettings);
 
             function applyTheme(theme) {
                 document.body.setAttribute('data-theme', theme);
                 renderHeaderWeather();
+                updateNewsTickerHeader();
             }
 
             function init() {
@@ -308,6 +429,7 @@
                 
                 loadSettings();
                 fetchWeather();
+                fetchNewsHeadlines();
             }
 
             init();
