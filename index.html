@@ -9,10 +9,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chosen Palette: Warm Neutrals (Default), Dark, Ocean Breeze -->
-    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left, and the time, current weather, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
+    <!-- Application Structure Plan: The application is a single-page, scrollable display. The header now features a news ticker on the left, and the time, current weather, a fullscreen toggle, and a settings cogwheel icon on the right, all neatly aligned and spread horizontally for quick glanceability and a thinner top section. The primary calendar takes a prominent position using an embedded Google Calendar iframe, set to a month view, for direct display of the user's events, which refreshes every 5 minutes. Only the Google Calendar and the collapsible Settings section remain as main content areas, streamlining the display for a hands-off, focused view. This structure prioritizes immediate visual information and simplicity, optimized for fullscreen tablet display. -->
     <!-- Visualization & Content Choices: 
         - News Ticker -> Goal: Inform -> Presentation: Horizontally scrolling text from a credible source (BBC News via rss2json.com) in the top-left -> Interaction: None (automatic cycling) -> Justification: Offers passive updates on general information in a non-intrusive way, fulfilling the request for real news. -> Library/Method: JS for fetching and cycling, CSS for animation.
-        - Time/Date & Header Weather & Settings Icon -> Goal: Inform/Configure -> Presentation: Large digital clock, concise current weather (icon, temp, description), and a cogwheel icon, all arranged horizontally in the header's top-right with increased spacing -> Interaction: Settings icon toggles collapsible settings section -> Justification: Provides essential, at-a-glance information and discreet access to settings without a main title, suitable for a hands-off, dedicated display, and now with a more aesthetically pleasing, compact layout. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo), HTML for icon.
+        - Time/Date & Header Weather & Settings Icon & Fullscreen Toggle -> Goal: Inform/Configure/Utility -> Presentation: Large digital clock, concise current weather (icon, temp, description), a fullscreen toggle button, and a cogwheel icon, all arranged horizontally in the header's top-right with increased spacing -> Interaction: Settings icon toggles collapsible settings section; Fullscreen button toggles browser fullscreen mode -> Justification: Provides essential, at-a-glance information and discreet access to settings and display utility, suitable for a hands-off, dedicated display, and now with a more aesthetically pleasing, compact layout. -> Library/Method: JS Date object, JS Fetch API (Open-Meteo), HTML for icon and button, Fullscreen API.
         - Calendar -> Goal: Organize -> Presentation: Embedded Google Calendar (Month mode) via iframe -> Interaction: Built-in Google Calendar navigation (if user interacts), now with auto-refresh every 5 minutes to ensure content is fresh. -> Justification: Directly displays the user's specific Google Calendar in a traditional month grid, fulfilling the core request for personal event visibility without requiring manual data entry. Month mode is chosen for a comprehensive view of events across the month. -> Library/Method: HTML iframe, JS setInterval.
         - Settings Section -> Goal: Configure -> Presentation: Collapsible section with input fields and theme selector -> Interaction: Save button updates settings, theme selector changes visual styles. -> Justification: Allows user to configure weather location and visual theme while keeping the settings out of the primary glanceable view.
     -->
@@ -148,7 +148,11 @@
                     <p id="time-display" class="text-2xl md:text-3xl font-semibold themed-accent-text"></p>
                     <p id="date-display" class="text-sm themed-text-color"></p>
                 </div>
-                <button id="settings-toggle-icon" class="p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity">
+                <!-- Fullscreen Toggle Button -->
+                <button id="fullscreen-toggle-btn" class="p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity" title="Toggle Fullscreen">
+                    &#x26F6; <!-- Unicode for "Black Universal Recycling Symbol" which looks like a fullscreen icon -->
+                </button>
+                <button id="settings-toggle-icon" class="p-2 text-3xl cursor-pointer themed-text-color hover:opacity-75 transition-opacity" title="Settings">
                     ⚙️
                 </button>
             </div>
@@ -226,9 +230,9 @@
             const googleCalendarIframe = document.getElementById('google-calendar-iframe');
             const initialCalendarSrc = googleCalendarIframe.src;
             const newsTickerTextHeader = document.getElementById('news-ticker-text-header');
+            const fullscreenToggleButton = document.getElementById('fullscreen-toggle-btn');
 
             let currentHeadlineIndex = 0;
-            let newsTickerInterval;
 
             function updateClock() {
                 const now = new Date();
@@ -280,7 +284,7 @@
                     80: '🌦️', 81: '🌧️', 82: '🌧️',
                     95: '⛈️'
                 };
-                return icons[code] || '🤷';
+                return icons[code] || '�';
             }
             
             function getWeatherDescription(code) {
@@ -347,29 +351,33 @@
                 newsTickerTextHeader.textContent = appState.newsHeadlines[currentHeadlineIndex];
                 currentHeadlineIndex = (currentHeadlineIndex + 1) % appState.newsHeadlines.length;
 
-                // Stop previous animation if any
                 newsTickerTextHeader.style.animation = 'none';
-                void newsTickerTextHeader.offsetWidth; // Trigger reflow
+                void newsTickerTextHeader.offsetWidth; 
 
-                // Calculate duration based on content width relative to its parent container
                 const parentWidth = newsTickerTextHeader.parentElement.offsetWidth;
-                const textWidth = newsTickerTextHeader.scrollWidth; // Use scrollWidth for true content width
+                const textWidth = newsTickerTextHeader.scrollWidth;
 
-                // Only animate if text is wider than its container
                 if (textWidth > parentWidth) {
-                    const duration = Math.max(10, textWidth / 50); // Adjust speed based on content length
+                    const duration = Math.max(10, textWidth / 50);
                     newsTickerTextHeader.style.animation = `scroll ${duration}s linear infinite`;
                 } else {
-                    // If text fits, no need to scroll, center it or just display
-                    newsTickerTextHeader.style.animation = 'none'; // Ensure no animation
-                    newsTickerTextHeader.style.transform = 'translateX(0)'; // Reset position
+                    newsTickerTextHeader.style.animation = 'none';
+                    newsTickerTextHeader.style.transform = 'translateX(0)';
                 }
             }
             
-            // Set up interval for news ticker updates
-            // This interval will primarily trigger the change of headline content,
-            // the animation itself is handled by CSS and resets upon content change.
-            setInterval(updateNewsTickerHeader, 10 * 1000); // Change headline every 10 seconds
+            setInterval(updateNewsTickerHeader, 10 * 1000);
+
+            // Fullscreen Toggle Logic
+            fullscreenToggleButton.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.error(`Error attempting to enable fullscreen: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
 
             // Settings Logic
             const settingsToggleIcon = document.getElementById('settings-toggle-icon');
@@ -437,3 +445,4 @@
     </script>
 </body>
 </html>
+�
